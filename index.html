@@ -223,6 +223,452 @@
 
 
   
+    <article id="post-SegNet" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/11/01/SegNet/">【论文阅读笔记】语义分割SegNet</a>
+    </h1>
+  
+
+        
+        <a href="/2018/11/01/SegNet/" class="archive-article-date">
+  	<time datetime="2018-11-01T03:20:30.855Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-01</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>论文地址：<a href="https://arxiv.org/pdf/1511.00561.pdf" target="_blank" rel="noopener">SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation</a></p>
+<hr>
+<h3 id="1-Abstract"><a href="#1-Abstract" class="headerlink" title="1. Abstract"></a><strong>1. Abstract</strong></h3><ul>
+<li>提出了一个用于语义分割的encoder+decoder的网络结构，encoder（VGG16的前13层）用于特征提取，decoder用于将feature map恢复到原始图像大小。</li>
+<li>移除了VGG16的全连接层（既提高了encoder最终输出分别率，又减少了参数）作为encoder，在max pooling时记录下最大值所在的index，在decoder中依靠该index对输入进行恢复（无需学习），得到稀疏的feature map（每4个数中有3个是0）。使用convolution kernel，得到dense feature map。</li>
+<li>SegNet是为场景理解而设计提出的，因此它在inference时的时内存与计算时间都很efficient。</li>
+</ul>
+<hr>
+<h3 id="2-Introduction"><a href="#2-Introduction" class="headerlink" title="2. Introduction"></a><strong>2. Introduction</strong></h3><ul>
+<li>在Decoding的过程中，使用max pooling记录的index的好处：<ul>
+<li>提高边界刻画能力；</li>
+<li>减少了端到端的训练过程中所需的参数；</li>
+<li>其他任何的encoder+decoder的结构中都可以采用这种上采样形式，易于扩展。</li>
+</ul>
+</li>
+<li>虽然之前也有基于max pooling index的decoder的工作，但是它也加上了fc layer，fc layer的参数占了总体90%的参数量，使得训练过程比较困难。</li>
+</ul>
+<hr>
+<h3 id="3-Architrcture"><a href="#3-Architrcture" class="headerlink" title="3. Architrcture"></a><strong>3. Architrcture</strong></h3><ul>
+<li>SegNet网络结构如下：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/SegNet/1.jpg" alt="NetWork"></li>
+<li>在每次convolution的时候，使用了CNN+BN+RELU的组合。</li>
+<li>在降采样的过程中，feature map逐渐减小，这会损失边界信息，记录max pooling过程中的index，可以较好地捕捉到边界信息。SegNet使用2bits来存储2X2的max pooling的结果，这可以大大减少网络所需要的存储空间。</li>
+<li>SegNet中带有index的pooling如下图所示：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/SegNet/2.jpg" alt="Pooling"></li>
+<li>在decoder中，只根据之前记录的index去进行上采样，则upsampling得到的feature map中，每个都是有3/4的像素值为0，因此使用经过可训练的filter生成dense feature map。</li>
+<li>与DeconvNet、UNet进行了对比：<ul>
+<li>DeconvNet参数很多，训练困难，需要大量计算资源。</li>
+<li>UNet没有使用带有index的pooling，同时去除了VGG中的Conv5以及pool5 layer，之后使用了deconvolution layer作为decoder。而SegNet使用了VGG-16中的所有参数作为pretrained weights。</li>
+</ul>
+</li>
+<li>FCN中，在decoding的过程中，会将上采样的结果与对称的encode的feature map相加，因此需要feature channel是相同的，而SegNet则不需要满足channel个数相同的条件。</li>
+<li>经过对比实验，有几个关于SegNet的结论：<ul>
+<li>encoder feature map参数完全存储时，模型性能最好，这可以通过语义结果的边界看出来； </li>
+<li>当内存要求有限制时，可以使用降维或者max pooling index的方式减少内存要求，使用合适的decoder提升模型性能。</li>
+<li>对于给定的encoder，更大的decoder会提升模型的性能。</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="4-Benchmark"><a href="#4-Benchmark" class="headerlink" title="4. Benchmark"></a><strong>4. Benchmark</strong></h3><p>作者在两种场景下做了实验：</p>
+<h4 id="Road-Scene-Segmentation"><a href="#Road-Scene-Segmentation" class="headerlink" title="Road Scene Segmentation"></a><strong>Road Scene Segmentation</strong></h4><ul>
+<li>SegNet对小物体的分割更加准确，同时也会产生更加平滑的分割结果。</li>
+<li>DeconvNet和SegNet的IOU最高，但是SegNet的inference time比DeconvNet要少很多。</li>
+</ul>
+<h4 id="SUN-RGB-D-Indoor-Scenes"><a href="#SUN-RGB-D-Indoor-Scenes" class="headerlink" title="SUN RGB-D Indoor Scenes"></a><strong>SUN RGB-D Indoor Scenes</strong></h4><ul>
+<li>SegNet的mIOU比deeplab小一些，但是G，C以及BF指标都要更好。</li>
+<li>这个任务比之前的任务要困难很多，主要是因为这里面的像素类别很多，类别不均衡现象更加严重，而且摄像头的视角不固定，物体的形状和大小变化比较多。</li>
+</ul>
+<hr>
+<h3 id="5-Conclusion"><a href="#5-Conclusion" class="headerlink" title="5. Conclusion"></a><strong>5. Conclusion</strong></h3><ul>
+<li>SegNet最主要的就是引入了这种encoder-decoder的结构，同时使用带有index的max pooling的结构，大大减小了inference过程中的存储损耗（精度几乎不受影响）。</li>
+<li>语义分割任务还有很大的提升空间。</li>
+</ul>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">DeepLearning</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">Segmentation</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/11/01/SegNet/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-FCN" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/10/30/FCN/">【论文阅读笔记】语义分割FCN</a>
+    </h1>
+  
+
+        
+        <a href="/2018/10/30/FCN/" class="archive-article-date">
+  	<time datetime="2018-10-30T07:37:49.522Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-10-30</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>论文地址：<a href="https://arxiv.org/pdf/1411.4038.pdf" target="_blank" rel="noopener">Fully Convolutional Networks for Semantic Segmentation</a></p>
+<hr>
+<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a><strong>前言</strong></h3><p>1.第一次端到端训练FCN，用于像素级别的预测；<br>2.第一次用监督预训练的方法训练FCN。<br>3.基于全卷积网络的CNN在语义分割任务中超过了state-of-art的效果（average IU比之前最好的结果高了20%），并且一张图像的inference time很短(0.2s左右)<br>4.FCN是在之前一些用于分类的网络（Alex Net，VGG，Google Net）的基础上做finetune。</p>
+<hr>
+<h3 id="1-卷积化"><a href="#1-卷积化" class="headerlink" title="1. 卷积化"></a><strong>1. 卷积化</strong></h3><p>分类所使用的网络通常最后连接全连接层，会将原来的二维矩阵压缩成一位的，丢失了空间信息，最后输出一个标量，即分类标签。语义分割则需要输出二维的分割图，故将全连接层替换为卷积层。以AlexNet为例，传统CNN中，前5层是conv层，第6/7/8层分别是疮毒为4096、4096、1000的一维向量，分别对应1000个类别的概率。FCN将这三层表示为卷积层，卷积核大小（channel，w，h）分别是(4096,1,1)、(4096,1,1)、(1000,1,1)。将fc layer替换为CNN之后，可以得到一个heatmap，这个heatmap可以反映某个特定像素所属的类别以及概率等。网络结构区别：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/FCN/1.jpg" alt="NetWork"></p>
+<hr>
+<h3 id="2-上采样"><a href="#2-上采样" class="headerlink" title="2. 上采样"></a><strong>2. 上采样</strong></h3><p>对应于最后生成heatmap的过程。在CNN中使用池化层来缩小图片的size，而在分割中需要得到与原图像size相同的分割图，故需要进行上采样。上采样系数为f，表示以stride为1/f进行卷积。之前的卷积是多对一的关系，即一个kernel及其对应的感受野会得到一个输出，而现在是feature map上的一个点会影响输出feature map上大小为kernel大小的点，具体的可视化效果可以见链接：<a href="https://github.com/vdumoulin/conv_arithmetic" target="_blank" rel="noopener">https://github.com/vdumoulin/conv_arithmetic</a></p>
+<hr>
+<h3 id="3-跳跃结构"><a href="#3-跳跃结构" class="headerlink" title="3. 跳跃结构"></a><strong>3. 跳跃结构</strong></h3><p>优化最终结果。将不同池化层的结果进行上采样，然后结合这些结果来优化输出。</p>
+<ul>
+<li>较浅层的conv感知域小，学习到局部特征，可以包含更多的位置信息以及appearance information；较深层的conv感知域大，能够学习到更抽象的特征，抽象特征对物体大小、位置和方向的敏感性更低，有助于识别性能的提高。</li>
+<li>FCN包含5个pooling layer，feature map尺寸降低了32倍，之后再使用32倍上采样，使得输出的feature map与原图大小相同，从而实现像素级别的分类。这个模型是FC-32s。</li>
+<li>将pooling layer 4与2倍上采样的pooling layer 5相加，再进行16倍上采样，得到FCN-16s。</li>
+<li>将pooling layer 4与2倍上采样的pooling layer 5相加，再进行2倍上采样，与pooling layer 3相加，上采样8倍，得到FCN-8s。</li>
+<li>上采样部分见下图：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/FCN/2.jpg" alt="Upsampling &amp; Skip Connections"></li>
+</ul>
+<hr>
+<h3 id="4-实验结果"><a href="#4-实验结果" class="headerlink" title="4. 实验结果"></a><strong>4. 实验结果</strong></h3><ul>
+<li>为了提升模型准确度，在其他方面也做了一些尝试：class balancing，dense prediction，augmentation，more training data等，有些对模型准确度有提升，有些没有太大的帮助。</li>
+<li>做了很多实验，验证了FCN超过了当前state-of-art的方法。</li>
+<li>本文提出的FCN也为之后的语义分割等任务提供了一个新的思路，即直接使用CNN也可以做分类等任务，这也避免了模型的图像输入必须要求特定大小的问题。</li>
+</ul>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">DeepLearning</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">Segmentation</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/10/30/FCN/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-GeoNet" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/10/19/GeoNet/">【论文阅读笔记】—— GeoNet</a>
+    </h1>
+  
+
+        
+        <a href="/2018/10/19/GeoNet/" class="archive-article-date">
+  	<time datetime="2018-10-19T13:39:13.267Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-10-19</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>论文地址：<a href="https://arxiv.org/abs/1803.02276" target="_blank" rel="noopener">Unsupervised Learning of Dense Depth, Optical Flow and Camera Pose</a></p>
+<hr>
+<h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a><strong>前言</strong></h3><p>2018年CVPR会议上，商汤科技SenseTime被收录的论文中，有一篇《GeoNet–Unsupervised Learning of Dense Depth, Optical Flow and Camera Pose》，提出了一个叫做GeoNet的框架——一种可以联合学习单目深度、光流和相机姿态的无监督学习框架，其表现超越了现有的一些无监督学习方法，并且取得了可以与监督学习方法相媲美的的结果。本人目前正在学习与之相关的内容，本篇博客将详细地解读论文。</p>
+<hr>
+<h3 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a><strong>摘要</strong></h3><p>GeoNet——一个用于视频中单目深度、光流和相机运动估计的无监督学习框架。这三者通过三维场景几何特性耦合在一起，以端到端的方式进行联合学习。从每个单独模块的预测中提取几何关系，然后将其合并为图像重构损失，分别对静态和动态场景进行推理。除此之外，还提出了一种自适应几何一致性损失损失来提高对outliers和non-Lambertian区域的鲁棒性，有效地解决了遮挡和纹理模糊的问题。在KITTI数据集上的实验表明，GeoNet在三个任务上都分别取得了state-of-the-art的结果，比以前的无监督学习的方法表现更好，甚至可以与监督学习的方相媲美。</p>
+<hr>
+<h3 id="1-Introduction"><a href="#1-Introduction" class="headerlink" title="1. Introduction"></a><strong>1. Introduction</strong></h3><p>理解视频中的3D场景几何是视觉感知中的基础问题，包括许多经典的计算机视觉任务，例如深度恢复、光流估计、视觉里程计等等。这些技术都有广阔的工业应用前景，包括自动驾驶、交互式协同机器人、定位与导航系统等。</p>
+<p>传统的运动恢复结构（SfM）[34,42]以整合的方式处理这些任务，其目的在于同时重建场景结构和相机运动。近期一些工作在在鲁棒性和特征描述符[2，39]，更有效的跟踪系统[55]，更好地利用语义级信息[4]等方面取得了进展。尽管如此，对于异常值和非纹理区域的失效仍然没有完全消除，因为它们本质上还是依赖于高质量、低级别的特征对应。</p>
+<p>为了突破这些限制，深度模型[35，45]被应用于每个低层次的子问题，并取得了与传统方法相当的进步。主要的优势来自于大数据，可以捕捉高层次的语义信息给低层次的学习，因此在ill-posed区域会比传统的方法表现更好。</p>
+<p>然而，需要大量的groundtruth数据用于深度学习，就需要昂贵的激光雷达和GPS设备。而且，以往的深度学习方法大多是针对如深度[26]、光流[8]、相机姿态[22]等某一特定任务的，而没有探究这些任务之间的内在依赖关系，这种关系可以通过3D场景结构的几何特性计算得到。<br>最近已有一些工作将这些问题merge到一起，但都有一些局限性。例如，[48]需要大量的激光扫描的深度数据用作监督，[15]需要立体相机作为数据采集的附加设备，[50,56]不能有效处理非刚体和遮挡区域。</p>
+<p>这篇文章中提出的无监督学习框架GeoNet将从视频中联合估计单目深度，光流和相机运动。这种方法的理论基础在于<strong>3D场景几何的本质特性</strong>。大部分自然场景都是由<strong>刚性静态</strong>表面构成的，例如道路、房屋、树木等。它们<strong>在视频帧之间的2D投影图像完全由深度结构和相机运动决定</strong>。同时，在这些场景中也存在动态对象，例如行人、汽车等，他们具有大位移、无序的特点。</p>
+<p>因此，我们采用了深度神经网络来描述上述特点。我们采用了一种“分而治之”的策略。设计了一种级联结构，用于自适应求解刚体流和物体的运动。整个运动场可以被逐步细化，使pipeline可分解并且便于学习。视图合成损失（view synthesis loss）引导这种融合运动场的无监督学习。第二个贡献，引入了自适应几何一致性损失来来克服那些不包括在纯粹的view synthesis中的目标，比如遮挡和光度不一致的问题。通过模仿传统的前后向(或左-右)一致性检查，过滤了可能的离群点和封闭区域。预测一致性在非遮挡区域的不同视图之间强制执行，而错误预测则被平滑，特别是在遮挡区域的错误。</p>
+<p>最后，我们在KITTI数据集上对三个任务进行综合评测，取得了比已有的无监督学习方法更好的效果，并且可以与监督学习的方法相媲美。</p>
+<hr>
+<h3 id="2-Related-Work"><a href="#2-Related-Work" class="headerlink" title="2.Related Work"></a><strong>2.Related Work</strong></h3><p><strong>Traditional Scene Geometry Understanding</strong><br>结构自运动(SfM)是一个长期存在的问题,即从非常大的无序图像集合中联合起来进行场景结构和相机运动的推断[13,16]。通常从特征提取和匹配开始，然后进行几何验证。在重建过程中，将bundle adjustment（BA）[47]应用于全局重构结构的细化。现有的这些方法非常依赖于精确的特征匹配，如果没有良好的光度一致性的保证，性能无法得到保证。典型的问题可能是由于自然场景中常见的低纹理、立体模糊、隐蔽性等原因造成的。</p>
+<p>场景流估计是另一个与我们的工作密切相关的课题，它是从无序图像序列中求解场景的密集三维运动场[49]。MRFs[27]被广泛地应用于将这些因素建模为离散标记问题。然而，由于有大量的变量需要优化，这些现成的方法通常太慢，无法实际使用。另一方面，目前已有的几种方法强调了一般场景流的刚性规律。与上述方法不同的是，我们采用了深度神经网络来更好地利用高水平的线索，而不是局限于特定的场景。我们的端到端的方式在用户级的GPU上进行inference只需要毫秒级的时间。此外，我们还对不包括在经典场景流概念中的大量的自主运动进行了有效的估计。</p>
+<p><strong>Supervised Deep Models for Geometry Understanding</strong><br>近年来，随着深度学习的发展，3D几何理解的许多任务，包括深度、光流、姿态估计等，都取得了很大的进展。[9]利用了一个双尺度网络，证明了深度模型可以用于单目深度估计。虽然这种单目形式的典型严重依赖于场景先验知识，所以很多新方法更倾向于立体设备。[29]引入了一个相关层来模仿传统的立体匹配技术。[24]提出了通过深度特征对成本体积进行3D转换，以更好地聚合立体信息。在学习光流的时候也应用了类似的方法。[18]对大型合成数据集进行了大量的网络训练，取得了与传统方法相当的效果。</p>
+<p>除了上述问题，相机定位和跟踪也可以用监督深度学习解决。[23]将6DoF摄像机的重新定位问题转换为学习任务，并在多视点几何基础上进行分析。</p>
+<p><strong>Unsupervised Learning of Geometry Understanding</strong><br>为了减轻对昂贵的groundtruth数据的依赖，人们提出了各种非监督的方法来解决三维理解任务。核心的监督信号通常来自一个基于几何推理的视图综合（view synthesis）目标。</p>
+<hr>
+<h3 id="3-Method"><a href="#3-Method" class="headerlink" title="3.Method"></a><strong>3.Method</strong></h3><p>在这一节中，从3D场景的性质开始分析，给出GeoNet的概述——由刚性结构重建器和非刚性运动定位器两部分组成。最后，提出了几何一致性执行——GeoNet的核心。</p>
+<p><strong>3.1.Nature of 3D Scene Geometry</strong><br>视频或图像是3D空间投影到特定维度的截图。3D场景通常由静态背景和运动物体组成。静态物体在视频帧之间的运动仅仅由深度和相机运动组成。而动态物体的运动则由相机齐次运动和物体本身的运动共同构成。</p>
+<p>与完整的场景理解相比，理解相机的齐次运动相对容易得多，因为大部分区域都受到相机的约束。为了从本质上分解三维场景的理解问题，将由相机运动控制的场景级一致性运动称为刚性流（rigid flow），区别于物体运动（object motion）。<br>简要介绍基本概念和符号。通过深度图（depth maps）D(i)和相机从目标帧到源帧的相对运动T(t-s)来模拟静态场景几何。从目标帧I(t)到源帧I(s)之间的相对2D刚性流可以用如下式子表示：<img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/1.jpg" alt="式1"><br>其中，K代表的是相机内参矩阵，pt是目标帧I(t)内的像素的齐次坐标。<br>另一方面，我们将无约束物体运动建模为经典光流概念，即2D位移向量。为了简洁起见，我们主要从目标帧到源帧的情况说明，可以拓展为反向的情况。在这些假设约束的指导下，我们可以在相邻帧之间应用differentiable inverse warping[20]，这是完全无监督学习方法的基础。</p>
+<p><strong>3.2.Overview of GeoNet</strong><br>GeoNet以无监督学习的方式感知3D场景的几何形状。将整个框架分为两个部分——刚性结构重构器（rigid structure reconstructor）&amp;非刚性结构定位器（non-rigid motion localizer），分别来学习刚体流和剩余流（residual flow）。利用图像相似度来引导无监督学习，可以推广到无限数量的视频序列而不需要任何标记成本。<br><img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/2.jpg" alt="NetWork"><br>第一部分由两个子网络构成，即DepthNet和PoseNet，分别回归出深度图和相机姿态，并融合产生刚性流（式1）。第二部分的ResFlowNet用于处理运动的物体。将ResFlowNet学习的剩余非刚性流动与刚性流动相结合（相加），得到最终的流动预测流。由于每个子网络的目标都是解决一个特定的子任务，复杂的场景几何理解目标被分解为一些简单的目标。不同阶段的视图合成（view synthesis）是对无监督学习的基本监督。</p>
+<p>最后，进行几何一致性检验，有效地提高了预测的一致性。</p>
+<p><strong>3.3.Rigid Structure Reconstructor</strong><br>目标：重建刚性场景结构并且对非刚性区域和离群点有很好的鲁棒性。训练样本时间上连续的视频帧，具有已知的相机内参。目标帧I(t)作为参考视图（reference view）。DepthNet用单目图像作为输入，利用场景先验知识进行深度预测。在训练期间，整个序列被视为一小批独立图像（mini-batch），并输入DepthNet。与之不同的是，PoseNet利用整个沿着channel维度concat的图像序列作为输入，回归出相机姿态T(t-s)的6DoF。利用这些基本预测，就可以推导出刚体流，<br><img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/3.jpg" alt="rigid flow"><br>I(s)~代表从源帧I(s)通过刚体流f(t-s)得到预测的目标帧的合成视图。因此，在该阶段的监督信号就是来自最小化视图合成I(s)~与原始帧I(t)之间的差异。<br>然而，刚性流只支配非闭塞刚体区域的运动，而在非刚性区域无效。虽然这种负面影响在相当短的时间内比较轻，采用了稳健的图像相似性度量[15]来测量光度损失(photometric loss)：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/4.jpg" alt="rigid warping loss"><br>其中，SSIM代表图像相似性指数，通过交叉验证取alpha为0.85。除了刚体部分的rigid warping loss，还引入了边缘感知深度平滑损失（edge-aware depth smoothness loss）（T是图像梯度权重的转置）：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/5.jpg" alt="depth smoothness loss"></p>
+<p><strong>3.4.Non-rigid Motion Localizer</strong><br>在第一阶段忽略了运动物体的存在，因此我们在第二阶段提出了ResFlowNet来定位非刚体的运动。直观上说，一般光流可以直接模拟无约束运动，这在现有的深度学习模型中经常采用。但是他们没有很好地利用刚性区域的约束性质，而我们在第一阶段就这样做了。用ResFlowNet学习剩余的非刚性流(residual non-rigid flow),其位移仅仅由物体与世界平面(world plane)的相对运动引起。以级联的方式将ResFlowNet连接在第一阶段之后。对于给定的图像帧对，ResFlowNet利用刚性结构重构器的输出，预测对应的剩余流(res)f(t-s),最终整个预测流为(full)f(t-s)=(rig)f(t-s)+(res)f(t-s)。</p>
+<p>刚性结构器在第一阶段产生了高质量的重构，为第二阶段奠定了良好的基础，因此ResFlowNet只需要关心剩余的非刚体。不仅可以纠正运动物体预测的错误，还可以纠正第一阶段不完美的结果（得益于端到端的学习方式，不完美的结果由高饱和度和极端照明条件产生）。</p>
+<p>通过略微的修改将第一阶段的监督扩展到目前阶段。具体的，在整个预测流(full)f(t-s)之后，对任意一对目标帧和源帧之间再进行image warping，用(full)I~代替(rig)I~，从而获得full flow的warping loss。同样的，将平滑损失扩展到2D光流场中。</p>
+<p><strong>3.5.Geometric Consistency Enforcement</strong><br>GeoNet的每个阶段都以视图综合（view synthesis）作为监督，其中隐含了光度一致性假设（photometric consistency）。虽然我们采用了图像相似性度量，但是遮挡区域和non-Lambertian表面仍然不能被很好地处理。为了减轻这些负面影响，我们在不改变网络结构的前提下在学习框架中应用了前后一致性检验。但是我们认为这种一致性的约束和warping loss，不应该加在遮挡区域。我们优化了最终运动场的自适应一致性损失，几何一致性损失是通过优化以下目标来实现的：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/6.jpg" alt="geometric consistency loss"><br>其中，(delta)f是目标帧I(t)在像素p(t)处前后一致性检验计算得到的full flow的微分。[ ]是Iverson bracket,[P]等于1（如果条件P为真，否则等于0）。 delta(pt)表示条件：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/7.jpg" alt="geometric consistency loss"><br>前向、后向流动不一致像素点被认为是可能的离群点。由于这些区域违反了photo consistency和geometric consistency假设，只能用平滑损失来处理。因此full flow的warping loss和geometric consistency都是按像素加权来计算的。</p>
+<p>因此，整个网络的损失函数为：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/8.jpg" alt="loss function"><br>其中，lamda损失权重，l代表金字塔图像尺度，&lt;t,s&gt;代表任意一对目标帧和源帧对和它们的交换。</p>
+<hr>
+<h3 id="4-Experiments"><a href="#4-Experiments" class="headerlink" title="4.Experiments"></a><strong>4.Experiments</strong></h3><p>本节分别给出单目深度、光流和相机姿态估计的定性和定量评测结果。</p>
+<p><strong>4.1.Implementation Details</strong><br><strong>Network Architecture</strong><br>GeoNet主要包含三个子网络，即DepthNet&amp;PoseNet，一起构成刚性结构重构器，ResFlowNet与前一阶段的输出相结合，实现非刚体运动的定位。由于DepthNet和ResFlowNet推测的是像素级的几何关系，我们采用[15]中的网络结构作为backbone。这个结构主要由编码器（encoder）和解码器（decoder）两部分组成。编码器部分以ResNet50作为更有效的剩余学习方式。解码器由反卷积层组成，将空间特征映射放大到输入的全尺度。为了同时保留全局高层次特征和局部细节信息，在encoder和decoder之间的不同分辨率上采用了skip connections，进行了多尺度的深度预测。ResFlowNet的输入是在channel维度上连接起来的几张图像组成，包括源帧和目标帧图像对，刚性流(rig)full，合成视图(rig)I~和它与原始图像I(t)的误差。PoseNet回归了6DoF的相机姿态，欧拉角和平移向量。PoseNet的网络结构与[56]相同，8个卷积层后连接着一层全局平均池化层，最后是预测层。除了最后的预测层之外，其他层都采用了Batch Normalization[19]和ReLUs激活函数。</p>
+<p><strong>Training Details</strong><br>实验是用Tensorflow框架进行的，虽然子网络可以以端到端的方式一起训练，但不能保证局部梯度优化可以使网络达到最优点。因此，我们采用了分段的训练策略，同时减小内存和计算消耗。先训练DepthNet和PoseNet，确定权重后再训练ResFlowNet。训练的输入图像的分辨率都resize到128*416,同时也采用了随机resizing、cropping和color augumentations来防止过拟合。网络优化函数采用了Adam，beta1=0.9，beta2=0.999。初始学习率为0.0002，mini-batch size为4。网络在单个Titan XP GPU上训练，预测深度、光流和相机姿态的速度分别为15ms，45ms，4ms。第一个阶段和第二阶段分别需要30和200个epoches来收敛。在KITTI的不同的分割集上进行测试。</p>
+<p><strong>4.2.Monocular Depth Estimation</strong><br>用split of Eigen来对单目深度估计进行评测。和测试集看上去很相似的帧以及静态帧都不包括在内[56]。通过将Velodyne激光扫描点投影到图像平面上，获得地面groundtruth。为了以输入图像的分辨率进行评测，将预测结果进行内插。训练时，序列长度设置为3。<br><img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/9.jpg" alt="depth estimation"><br>表1所示，“Ours VGG”在KITTI数据集上进行训练，网络结构与”[56] without BN”相同，两者相比，说明loss function的有效性。“Ours VGG”和”Ours ResNet”说明网络结构的优势。我们的方法比有监督学习[9,28]和以前的无监督学习方法[14,56]效果更好。有趣的是，当模型在KITTI和Cityscapes数据集上训练时，我们的方法略逊于[15]，这是由于数据集之间的差异（stereo image pairs &amp; monocular video sequence）造成的。以上对比结果都揭示了GeoNet的几何理解能力。</p>
+<p><strong>4.3.Optical Flow Estimation</strong><br>在KITTI stereo/flow split上测试光流部分的表现。由于无监督学习方式，可以用不带grountruth的原始图像进行训练。所有的图像一共包含了28个场景（测试图像除外）。为了比较residual flow learining和direct flow learning，我们将[8]中的FlowNet进行修改，得到的DirFlowNet(no GC)包含warping loss和smoothness loss，DirFlowNet还包含了geometric consistency loss。此外，还对自适应一致性损失和朴素一致性损失（没有按照像素加权）进行了对比研究。<br><img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/10.jpg" alt="flow estimation"></p>
+<p>如表2所示，GeoNet在overall区域取得了最低的EPE误差和在non-occluded区域与其他无监督学习baseline相比更低的EPE误差。DirFlowNet(no GC)与DirFlowNet对比，说明了即使在不同的框架中，geometric consistency loss的有效性。此外，GeoNet与DirFlowNet的损失函数相同，但GeoNet在overall区域的EPE误差更小，说明了基于3D场景几何框架的优势。朴素一致性的效果没有自适应一致性的效果好。</p>
+<p><strong>Gradient Locality of Warping Loss</strong><br>然而，DirFlowNet在non-occluded区域的表现比GeoNet好，似乎有些不合理。我们研究了不同程度的groundtruth residual flow分布，即|| f(gt)-f(rig)||，其中f(gt)代表groundtruth full flow。如下图所示，GeoNet在小displacement时误差比其他方法小得多，但是后来误差随着diaplacement增大而增大。通过实验发现，Geoet擅长于纠正rigid flow的小误差。但是，预测的residual flow倾向于过早地收敛到一定的范围，这与[15]的实验结果是一致的。这是因为warping loss是由局部像素强度的差导出的，这在复杂的级联结构即GeoNet中会被放大。我们用数值监督（由groundtruth或者从DirFlowNet中提取的knowledge）来取代warping loss，但不改变网络结构，发现这个问题就不存在了。解决warping loss的局部梯度性，将是今后工作的改进方向。<br><img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/11.jpg" alt="flow estimation"></p>
+<p><strong>4.4.Camera Pose Estimation</strong><br>在KITTI的visual odometry split数据集上测试相机姿态。为了与[56]对比，将11个带有groundtruth的序列分成两部分，00-08用于训练，09-10用于测试。训练时序列长度设为5。除此之外，还将我们的方法与传统的SLAM方法，ORB-SLAM[32]进行对比。ORB-SLAM涉及到全局优化步骤，如闭环检测和转角调整（Bundle Adjustment）。ORB-SLAM（short）训练时以5帧作为输入，ORB-SLAM（long）以整个序列作为输入。所有的结果都以5帧的轨迹来进行评测，缩放因子scaling factor被优化以与groundtruth一致来解决尺度模糊的问题[43]。如表3所示，我们的方法比其他所有的方法都好。注意到，虽然GeoNet只利用了相当短的时间内的有限信息，但是仍然取得了比ORB-SLAM(full)更好地结果。这意味着GeoNet捕捉到了额外的高层次的线索，而不仅仅是低层次的特征对应。我们分析了效果不好的情况，发现当大的运动物体出现在摄像机前面时，网络有时会对参考系统产生混淆，而这种情况通常存在于direct visual SLAM中。<br><img src="https://github.com/LCJHust/Github_Images/raw/master/GeoNet/12.jpg" alt="pose estimation"></p>
+<p>5.Conclusion</p>
+<p>我们提出了联合无监督学习框架GeoNet，发现了利用几何关系联合解决这些任务比以前那种单独去解决任务的方案更有优势。无监督性质深刻地揭示了神经网络在几何推理中捕捉高层线索和特征对应的能力。实验结果表明，在不需要groundtruth的情况下学习这些low level的视觉任务是有可能的。</p>
+<p>未来的工作，一方面要解决warping loss的局部梯度性的问题，并且将语义信息引入到GeoNet中。</p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">DeepLearning</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">SLAM</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/10/19/GeoNet/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
+    <article id="post-SfMLearner" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2018/10/19/SfMLearner/">【论文阅读笔记】 —— SfMLearner</a>
+    </h1>
+  
+
+        
+        <a href="/2018/10/19/SfMLearner/" class="archive-article-date">
+  	<time datetime="2018-10-19T08:18:09.697Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-10-19</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>论文地址：<a href="https://arxiv.org/abs/1704.07813" target="_blank" rel="noopener">Unsupervised Learning of Depth and Ego-motion from video</a></p>
+<hr>
+<h3 id="摘要"><a href="#摘要" class="headerlink" title="摘要"></a><strong>摘要</strong></h3><p>文章提出了一种单目深度和位姿估计的无监督学习网络，本文的创新点是完全无监督的网络，并且可能是第一篇用深度学习的方法从一段视频中恢复camera的pose的方法。整个网络主要分为两个部分，分别是单视图深度估计和多视图位姿估计。需要注意的是本文最后得到的深度和位姿没有系统尺度。最终得到的深度达到state of art，pose的精度也与ORB-SLAM2的localization模式（即没有丢失后的重定位以及以关键帧的全局BA为核心力量的回环检测）效果相当。如论文中图1所示（这里注意后面有提到同时训练了第三个网络explainability prediction network暂时翻译成解释预测网络）。</p>
+<hr>
+<h3 id="论文核心——视图合成作为监督"><a href="#论文核心——视图合成作为监督" class="headerlink" title="论文核心——视图合成作为监督"></a><strong>论文核心——视图合成作为监督</strong></h3><p>本文将视觉合成作为深度和位姿估计的关键监督信息，主要的思路是将一个目标图像上的像素点首先经过重投影映射（project）到源图像上（一般不止一个），然后将这个源图像中像素点扭曲（warp）到和目标图像上对应像素点同一位置，最后对这同一位置对应的像素点求像素差，也就是灰度值的差（有点类似于求特征点匹配）。建立损失函数（最小二乘模型）。</p>
+<p><img src="https://github.com/LCJHust/Github_Images/raw/master/SfMLearner/1.jpg" alt="the differentiable image warping process"></p>
+<p>具体过程：</p>
+<ol>
+<li>目标视图$I_{t}$作为DepthCNN的输入，生成具有每个像素深度的深度图，即$\widehat{D}$； </li>
+<li>对于PoseCNN则将目标视图$I_{t}$和源视图$I_{t-1}$,$I_{t+1}$作为输入，输出相机的相对姿态$\widehat{T}<em>{t\rightarrow t-1}$,$\widehat{T}</em>{t\rightarrow t+1}$； </li>
+<li>DepthCNN和PoseCNN的输出，即$\widehat{D}$和$\widehat{T}<em>{t\rightarrow t-1}$,$\widehat{T}</em>{t\rightarrow t+1}$,用来逆向翘曲（wrap）源视图$I_{s}$以生成目标视图$I_{t}$;</li>
+<li>利用复原图与目标视图之间的误差用于训练DepthCNN和PoseCNN，至此我们可以无监督的训练我们的神经网络。即$L_{vs}=\sum _{s}\sum <em>{p}\left | I</em>{t}\left ( p \right )-\widehat{I}_{s}\left ( p \right ) \right |$</li>
+</ol>
+<p><img src="https://github.com/LCJHust/Github_Images/raw/master/SfMLearner/2.jpg" alt="Overview of pipeline"></p>
+<hr>
+<h3 id="The-Differentiable-Image-Warping-Process"><a href="#The-Differentiable-Image-Warping-Process" class="headerlink" title="The Differentiable Image Warping Process"></a><strong>The Differentiable Image Warping Process</strong></h3><p>2.1. 重投影<br>首先通过单目相机模型将目标视图$I_{t}$中的点$p_{t}$投影到源视图$I_{s}$上的$p_{s}$，即：<br>$p_{s}=KTP_{W}$<br>$D\left ( p_{t} \right )p_{t}=KP_{W}$<br>联立约去$P_{W}$可以得到公式:<br>$p_{t}$~$K\cdot \widehat{T}<em>{t\rightarrow s}\cdot  \widehat{D</em>{t}}(p_{t})\cdot K^{-1}\cdot p_{t}$</p>
+<p>2.2. 可微分双线性采样机制<br>直接将像素点投影到$p_{t}$会出现一个问题，这个点的坐标很有可能没有落在源视图的像素点上，就会出现图3中间视图的情况，需要采用双线性采样机制来加权得到ps的灰度值（像素值）。将与$p_{t}$点相近的上下左右四个点按距离做权值进行加权（这里权值和为1）得到$p_{t}$灰度值。</p>
+<p>2.3. 克服模型局限性的建模<br>单目建模的三个假设：<br>（1）场景是静态的，不存在动态物体；<br>（2）目标视图和源视图之间没有遮挡物体；<br>（3）表面是理想镜面反射，这样图像的一次性误差才有意义；<br>但其实实际上上面假设不完全满足，因此为提高系统鲁棒性，克服以上的问题，在这里增加了另一个训练网络explainability prediction network（和深度和位姿估计网络联合）。其输出主要是为每一对目标视图和源视图提供每个像素的$E_{s}$（soft mask）。因此损失函数为：<br>$L_{vs}=\sum <em>{&lt;I</em>{1},…,I_{N}&gt;\in S}\sum <em>{p}\widehat{E}</em>{s}(p)\cdot \left |I_{t}(p)-\widehat{I}_{s}(p) \right |$</p>
+<p>2.4. 克服梯度局部性<br>模型的梯度主要来源于$I(p_{t})$与其相邻的四个$I(p_{s})$，如果$p_{s}$位于一个缺少纹理的区域或者当前的估计不够准确。<br>解决策略：<br>1、利用网络结构约束输出平滑，是的梯度从有意义的区域传输到邻近的区域；<br>2、明确多尺度与平滑损失：允许梯度能直接从更大的空间区域得到。用深度图的二阶梯度的$L1$范数来提取平滑区域。最后的损失函数：<br>$L_{final}=\sum <em>{l}L</em>{vs}^{l}+\lambda <em>{s}L</em>{smooth}^{l}+\lambda _{e}\sum <em>{s}L</em>{reg}(\widehat{E}_{s}^{l})$</p>
+<hr>
+<h3 id="整体网络结构"><a href="#整体网络结构" class="headerlink" title="整体网络结构"></a><strong>整体网络结构</strong></h3><p><img src="https://github.com/LCJHust/Github_Images/raw/master/SfMLearner/3.jpg" alt="Network"></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">DeepLearning</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color5">SLAM</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2018/10/19/SfMLearner/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
   
 
 
@@ -314,6 +760,18 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
             <input type="checkbox" q-on="click:toggleTag(e)" q-attr="checked:showTags">
           </label>
           <ul class="article-tag-list" q-show="showTags">
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">DeepLearning</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color5">SLAM</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">Segmentation</a>
+              </li>
             
             <div class="clearfix"></div>
           </ul>
