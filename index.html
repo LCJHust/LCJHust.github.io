@@ -172,7 +172,7 @@
 <h2 id="Introdction"><a href="#Introdction" class="headerlink" title="Introdction"></a>Introdction</h2><p>深度估计问题原本是回归问题，需要预测的深度值是连续的。本文提出将连续的深度值离散化，转化为分类问题。但这个分类问题又不同于普通的分类问题，深度值的分类是有规律的，根据远近关系，所有的类别可以按照从小到大的次序排列。这就是所谓的“有序回归”(ordinal regression)。</p>
 <p>这篇与Monocular 3D Estimation任务不同，只focus在预测depth上。但其中的loss设计非常有效，具有非常强的参考借鉴意义，所以也重点review一下。同时该篇应该是Monocular Depth Estimation (MDE) 任务中公认的非常work的一篇。此篇论文作者重点address了两个方面的问题：1）mean squared error 的收敛及效果问题 2）现有网络backbone的过多的pooling带来的负面影响。相对应了就有两个较大的改进：1）离散化深度将其转化为ordinal regression问题2）采用平行多路的ASPP，尽可能避免降采样。后者基本思想来自于经典的PSPNet。前者创新点较高，我们重点看ordinal regression loss，上图，首先对depth的最小到最大的范围进行阈值切割。<br><img src="https://github.com/LCJHust/Github_Images/raw/master/DORN/SID.png" alt="SID"><br>在这里，作者采用了递增的切割方式，因为越远对距离的估计越不精确（在自动驾驶场景尤其突出，远端1个像素可能跨了几十米）。这样使得网络降低精力在远端估计的学习上，能够更好地focus在更容易估计准确的近端距离中（近端信息也比较充分）。能够提出这样的方式彰显功底。这是作者对问题、数据地深刻认知与打交道过程中总结出来的非常work的顶层设计。非常赞！</p>
 <h2 id="Network"><a href="#Network" class="headerlink" title="Network"></a>Network</h2><p>网络结构如下：输入图像经过一个卷积网络，这个网络与其他提取特征的网络的区别在于去掉了一些池化层，所以这边说特征提取器是致密的，也即特征图的尺寸比较大。随后特征图经过了五个通道，包括一个全图编码器、一个卷积运算、3个尺度的膨胀卷积，这五个通道的结果串联起来构成了场景理解模块。再经过一个1*1的卷积（用来整合五个通道的信息）送给有序回归部分得到深度图的输出。<br><img src="https://github.com/LCJHust/Github_Images/raw/master/DORN/network.png" alt="NetWork"><br>空洞卷积所做的就是卷积核填一些零。这样得到的结果仍是尺寸较低的，或者说感受野提高了。相比于降采样，直接丢弃了细节的信息，而空洞卷积则是把这些信息整合了起来，并没有丢弃，保证了模型能够认知到细节信息。此外，网络中的全图编码器也做了一些修改，减少了参数的数目。<br>在有序回归这部分，假设我们的深度区间一共有K个，则最后ordinal layer的输出则是(BS, 2K, H, W)维的，代表的是，小于第一个区间阈值的概率和大于第一个区间阈值的概率，小于第二个区间阈值的概率和大于第二个区间阈值的概率，以此类推。经过softmax层后，得到的就是处于这K个区间的概率。</p>
-<h2 id="Loss-Function"><a href="#Loss-Function" class="headerlink" title="Loss Function"></a>Loss Function</h2><p>下来我们看loss的设计:<br><img src="https://github.com/LCJHust/Github_Images/blob/master/DORN/loss.png" alt="loss fuction"><br>形式化成公式看起来比较麻烦，我们翻译成大白话，举个例子：比如某个像素点的深度落在了第k个区间（总共5个区间），该像素经过网络会得到5个softmax的2分类输出（依次代表这5个区间），那么前k-1个输出给1的监督；后6-k个输出给0的监督，监督的含义代表说label所在区间是否大于当前区间。根据上述定义，inference的时候依次统计有多少 &gt; 0.5的输出，每产生一个 &gt; 0.5的输出则代表了预测label的区间大于当前区间，应该往后移动一个。最终落到的区间取了该区间的中值作为最终预测结果，在这里作者没有进一步细化了。换句话说，该方法对depth的最终输出数值其实是相对有限的一个集合。当然，作者也ablation study了从40个区间（值）到120个，性能区别不大。性能不用多说，尤其在KITTI上当时领先其它state-of-the-art的方法a large margin。</p>
+<h2 id="Loss-Function"><a href="#Loss-Function" class="headerlink" title="Loss Function"></a>Loss Function</h2><p>下来我们看loss的设计:<br><img src="https://github.com/LCJHust/Github_Images/raw/master/DORN/loss.png" alt="loss fuction"><br>形式化成公式看起来比较麻烦，我们翻译成大白话，举个例子：比如某个像素点的深度落在了第k个区间（总共5个区间），该像素经过网络会得到5个softmax的2分类输出（依次代表这5个区间），那么前k-1个输出给1的监督；后6-k个输出给0的监督，监督的含义代表说label所在区间是否大于当前区间。根据上述定义，inference的时候依次统计有多少 &gt; 0.5的输出，每产生一个 &gt; 0.5的输出则代表了预测label的区间大于当前区间，应该往后移动一个。最终落到的区间取了该区间的中值作为最终预测结果，在这里作者没有进一步细化了。换句话说，该方法对depth的最终输出数值其实是相对有限的一个集合。当然，作者也ablation study了从40个区间（值）到120个，性能区别不大。性能不用多说，尤其在KITTI上当时领先其它state-of-the-art的方法a large margin。</p>
 
       
 
@@ -848,11 +848,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color5">SLAM</a>
+                <a href="javascript:void(0)" class="js-tag color3">Segmentation</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">Segmentation</a>
+                <a href="javascript:void(0)" class="js-tag color5">SLAM</a>
               </li>
             
             <div class="clearfix"></div>
