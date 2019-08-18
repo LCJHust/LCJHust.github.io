@@ -148,6 +148,120 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-PlaneSweeping" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/08/18/PlaneSweeping/">【经典算法学习】三维重建之Plane Sweeping 平面扫描算法</a>
+    </h1>
+  
+
+        
+        <a href="/2019/08/18/PlaneSweeping/" class="archive-article-date">
+  	<time datetime="2019-08-18T10:11:03.915Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-08-18</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="论文地址：Real-Time-Plane-Sweeping-Stereo-with-Multiple-Sweeping-Directions"><a href="#论文地址：Real-Time-Plane-Sweeping-Stereo-with-Multiple-Sweeping-Directions" class="headerlink" title="论文地址：Real-Time Plane-Sweeping Stereo with Multiple Sweeping Directions"></a>论文地址：<a href="https://inf.ethz.ch/personal/pomarc/pubs/GallupCVPR07.pdf" target="_blank" rel="noopener">Real-Time Plane-Sweeping Stereo with Multiple Sweeping Directions</a></h2><h2 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h2><p>Plane sweeping算法用于实时三维重建，适合并行计算，通过GPU 加速后能达到实时三维重建的效果。大多实时三维重建的深度估计部分采用该算法。而且plane sweeping不用rectify。算法的前提假设是场景中的物体只有漫反射。最初由《Multi-resolution real-time stereo on commodity graphics hardware》提出，后由《Real-time Plane-sweeping Stereo with Multiple Sweeping Directions》添加多面扫面用在实时三维重建中。</p>
+<h2 id="Basic-Algorithm"><a href="#Basic-Algorithm" class="headerlink" title="Basic Algorithm"></a>Basic Algorithm</h2><p>假设有若干个相机和一个虚拟相机camX，首先定义一个近平面和一个远平面，在深度范围内划分出一个个平行的平面。如果平行平面足够密集，空间被分割的足够细，那么，空间物体表面上的一点M一定位于众多平行平面中的其中一个平面 上。同时，所有能可以看到点M的相机看到的M 必然看到的是同一个颜色，也就是物体在点M本来的颜色。假设现在又有另一个点M’，和点M位于同一平面上，但并不位于任何可见物体的表面上。这样的点投影到每个可见摄像机上，会呈现出不同的颜色。因此，平面扫描算法的一个基本假设是：</p>
+<blockquote>
+<p>对于平面上任意一点p，其如果投影到每个相机上的颜色均相同，那么可以说这个点很大概率是物体表面上的点。</p>
+</blockquote>
+<p><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/basic.png" alt="basic"></p>
+<p>对于平行平面Di上的每一个点p，将其投影到所有相机上，之后根据投影的颜色进行匹配计算，计算出点p所对应的分数，以及其所对应的深度，p所对应的分数越高，代表其投影在各个相机上的颜色越相近。点p在计算之后，会被投影到虚拟相机camX上，可以选择从后向前的扫描方式进行扫描，如果对于某一平面Dj上的某一点q，将其投影到camX后，发现所得分数高于之前该点的分数，那么便更新该点的分数和深度值。直到所有平面扫描结束，即可得到最终camX 对应图像的深度图。</p>
+<h2 id="Plane-Sweeping-Stereo"><a href="#Plane-Sweeping-Stereo" class="headerlink" title="Plane Sweeping Stereo"></a>Plane Sweeping Stereo</h2><blockquote>
+<ul>
+<li>假设在N个不同的位置对物体进行拍摄（也可以理解为有N个不同的相机对物体进行拍摄），则其相机投影矩阵为：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/projection_matrix.png" alt="projection matrix"><br>其中， Kk是第k个相机的内参矩阵，Rk和Ck分别是第k个相机相对于参考相机P(ref)的旋转和平移。并且将参考相机P(ref)假设为坐标原点，则它的投影矩阵为P_{ref}=K_{ref}[I_{3x3}| 0]</li>
+</ul>
+</blockquote>
+<blockquote>
+<ul>
+<li>假设一共划分出M个平面，则每个平面可以表示为：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/plane.png" alt="plane"></li>
+</ul>
+</blockquote>
+<blockquote>
+<ul>
+<li>将参考视图reference viwew中的像素投影到其他图像中， 这种从参考图像平面投影到其他相机图像平面的变换是planar mapping，因此可以用单应矩阵来表示：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/homo.png" alt="homo"></li>
+</ul>
+</blockquote>
+<blockquote>
+<ul>
+<li>参考视图中被map的像素(x,y)在另一幅图像Ik中的位置为(xk, yk)：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/pixel.png" alt="pixel"><br>如果某个平面与投影到参考视图的像素(x, y)所在的曲面相交，并且表面只存在漫反射，则Ik(xk, yk)和Iref(x,y)的颜色一致。</li>
+</ul>
+</blockquote>
+<blockquote>
+<ul>
+<li>相似性度量：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/cost.png" alt="cost"></li>
+</ul>
+</blockquote>
+<blockquote>
+<ul>
+<li>最小代价函数所对应的假设平面则为物体实际所在的深度：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/depth.png" alt="depth"></li>
+</ul>
+</blockquote>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">3D</a>
+        		</li>
+      		 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">Depth Estimation</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/08/18/PlaneSweeping/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-DORN" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -844,15 +958,23 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">Segmentation</a>
-              </li>
-             
-              <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">MonoDepth</a>
               </li>
              
               <li class="article-tag-list-item">
                 <a href="javascript:void(0)" class="js-tag color5">SLAM</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">3D</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color2">Depth Estimation</a>
+              </li>
+             
+              <li class="article-tag-list-item">
+                <a href="javascript:void(0)" class="js-tag color3">Segmentation</a>
               </li>
             
             <div class="clearfix"></div>

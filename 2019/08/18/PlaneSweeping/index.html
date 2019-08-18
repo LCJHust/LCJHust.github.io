@@ -6,23 +6,28 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <link rel="dns-prefetch" href="http://yoursite.com">
-  <title>【论文阅读笔记】语义分割SegNet | Hexo</title>
+  <title>【经典算法学习】三维重建之Plane Sweeping 平面扫描算法 | Hexo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="论文地址：SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation  1. Abstract 提出了一个用于语义分割的encoder+decoder的网络结构，encoder（VGG16的前13层）用于特征提取，decoder用于将feature map恢复到原始图像大小。 移除了VGG16的全">
-<meta name="keywords" content="DeepLearning,Segmentation">
+  <meta name="description" content="论文地址：Real-Time Plane-Sweeping Stereo with Multiple Sweeping DirectionsIntroductionPlane sweeping算法用于实时三维重建，适合并行计算，通过GPU 加速后能达到实时三维重建的效果。大多实时三维重建的深度估计部分采用该算法。而且plane sweeping不用rectify。算法的前提假设是场景中的物体只有漫">
+<meta name="keywords" content="3D,Depth Estimation">
 <meta property="og:type" content="article">
-<meta property="og:title" content="【论文阅读笔记】语义分割SegNet">
-<meta property="og:url" content="http://yoursite.com/2018/11/01/SegNet/index.html">
+<meta property="og:title" content="【经典算法学习】三维重建之Plane Sweeping 平面扫描算法">
+<meta property="og:url" content="http://yoursite.com/2019/08/18/PlaneSweeping/index.html">
 <meta property="og:site_name" content="Hexo">
-<meta property="og:description" content="论文地址：SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation  1. Abstract 提出了一个用于语义分割的encoder+decoder的网络结构，encoder（VGG16的前13层）用于特征提取，decoder用于将feature map恢复到原始图像大小。 移除了VGG16的全">
+<meta property="og:description" content="论文地址：Real-Time Plane-Sweeping Stereo with Multiple Sweeping DirectionsIntroductionPlane sweeping算法用于实时三维重建，适合并行计算，通过GPU 加速后能达到实时三维重建的效果。大多实时三维重建的深度估计部分采用该算法。而且plane sweeping不用rectify。算法的前提假设是场景中的物体只有漫">
 <meta property="og:locale" content="default">
-<meta property="og:image" content="https://github.com/LCJHust/Github_Images/raw/master/SegNet/1.jpg">
-<meta property="og:image" content="https://github.com/LCJHust/Github_Images/raw/master/SegNet/2.jpg">
-<meta property="og:updated_time" content="2018-11-01T03:24:47.430Z">
+<meta property="og:image" content="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/basic.png">
+<meta property="og:image" content="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/projection_matrix.png">
+<meta property="og:image" content="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/plane.png">
+<meta property="og:image" content="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/homo.png">
+<meta property="og:image" content="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/pixel.png">
+<meta property="og:image" content="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/cost.png">
+<meta property="og:image" content="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/depth.png">
+<meta property="og:updated_time" content="2019-08-18T10:13:35.662Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="【论文阅读笔记】语义分割SegNet">
-<meta name="twitter:description" content="论文地址：SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation  1. Abstract 提出了一个用于语义分割的encoder+decoder的网络结构，encoder（VGG16的前13层）用于特征提取，decoder用于将feature map恢复到原始图像大小。 移除了VGG16的全">
-<meta name="twitter:image" content="https://github.com/LCJHust/Github_Images/raw/master/SegNet/1.jpg">
+<meta name="twitter:title" content="【经典算法学习】三维重建之Plane Sweeping 平面扫描算法">
+<meta name="twitter:description" content="论文地址：Real-Time Plane-Sweeping Stereo with Multiple Sweeping DirectionsIntroductionPlane sweeping算法用于实时三维重建，适合并行计算，通过GPU 加速后能达到实时三维重建的效果。大多实时三维重建的深度估计部分采用该算法。而且plane sweeping不用rectify。算法的前提假设是场景中的物体只有漫">
+<meta name="twitter:image" content="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/basic.png">
   
     <link rel="alternative" href="/atom.xml" title="Hexo" type="application/atom+xml">
   
@@ -154,78 +159,63 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            <article id="post-SegNet" class="article article-type-post " itemscope itemprop="blogPost">
+            <article id="post-PlaneSweeping" class="article article-type-post " itemscope itemprop="blogPost">
   <div class="article-inner">
     
       <header class="article-header">
         
   
     <h1 class="article-title" itemprop="name">
-      【论文阅读笔记】语义分割SegNet
+      【经典算法学习】三维重建之Plane Sweeping 平面扫描算法
     </h1>
   
 
         
-        <a href="/2018/11/01/SegNet/" class="archive-article-date">
-  	<time datetime="2018-11-01T03:20:30.855Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2018-11-01</time>
+        <a href="/2019/08/18/PlaneSweeping/" class="archive-article-date">
+  	<time datetime="2019-08-18T10:11:03.915Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-08-18</time>
 </a>
         
       </header>
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>论文地址：<a href="https://arxiv.org/pdf/1511.00561.pdf" target="_blank" rel="noopener">SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation</a></p>
-<hr>
-<h3 id="1-Abstract"><a href="#1-Abstract" class="headerlink" title="1. Abstract"></a><strong>1. Abstract</strong></h3><ul>
-<li>提出了一个用于语义分割的encoder+decoder的网络结构，encoder（VGG16的前13层）用于特征提取，decoder用于将feature map恢复到原始图像大小。</li>
-<li>移除了VGG16的全连接层（既提高了encoder最终输出分别率，又减少了参数）作为encoder，在max pooling时记录下最大值所在的index，在decoder中依靠该index对输入进行恢复（无需学习），得到稀疏的feature map（每4个数中有3个是0）。使用convolution kernel，得到dense feature map。</li>
-<li>SegNet是为场景理解而设计提出的，因此它在inference时的时内存与计算时间都很efficient。</li>
+        <h2 id="论文地址：Real-Time-Plane-Sweeping-Stereo-with-Multiple-Sweeping-Directions"><a href="#论文地址：Real-Time-Plane-Sweeping-Stereo-with-Multiple-Sweeping-Directions" class="headerlink" title="论文地址：Real-Time Plane-Sweeping Stereo with Multiple Sweeping Directions"></a>论文地址：<a href="https://inf.ethz.ch/personal/pomarc/pubs/GallupCVPR07.pdf" target="_blank" rel="noopener">Real-Time Plane-Sweeping Stereo with Multiple Sweeping Directions</a></h2><h2 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h2><p>Plane sweeping算法用于实时三维重建，适合并行计算，通过GPU 加速后能达到实时三维重建的效果。大多实时三维重建的深度估计部分采用该算法。而且plane sweeping不用rectify。算法的前提假设是场景中的物体只有漫反射。最初由《Multi-resolution real-time stereo on commodity graphics hardware》提出，后由《Real-time Plane-sweeping Stereo with Multiple Sweeping Directions》添加多面扫面用在实时三维重建中。</p>
+<h2 id="Basic-Algorithm"><a href="#Basic-Algorithm" class="headerlink" title="Basic Algorithm"></a>Basic Algorithm</h2><p>假设有若干个相机和一个虚拟相机camX，首先定义一个近平面和一个远平面，在深度范围内划分出一个个平行的平面。如果平行平面足够密集，空间被分割的足够细，那么，空间物体表面上的一点M一定位于众多平行平面中的其中一个平面 上。同时，所有能可以看到点M的相机看到的M 必然看到的是同一个颜色，也就是物体在点M本来的颜色。假设现在又有另一个点M’，和点M位于同一平面上，但并不位于任何可见物体的表面上。这样的点投影到每个可见摄像机上，会呈现出不同的颜色。因此，平面扫描算法的一个基本假设是：</p>
+<blockquote>
+<p>对于平面上任意一点p，其如果投影到每个相机上的颜色均相同，那么可以说这个点很大概率是物体表面上的点。</p>
+</blockquote>
+<p><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/basic.png" alt="basic"></p>
+<p>对于平行平面Di上的每一个点p，将其投影到所有相机上，之后根据投影的颜色进行匹配计算，计算出点p所对应的分数，以及其所对应的深度，p所对应的分数越高，代表其投影在各个相机上的颜色越相近。点p在计算之后，会被投影到虚拟相机camX上，可以选择从后向前的扫描方式进行扫描，如果对于某一平面Dj上的某一点q，将其投影到camX后，发现所得分数高于之前该点的分数，那么便更新该点的分数和深度值。直到所有平面扫描结束，即可得到最终camX 对应图像的深度图。</p>
+<h2 id="Plane-Sweeping-Stereo"><a href="#Plane-Sweeping-Stereo" class="headerlink" title="Plane Sweeping Stereo"></a>Plane Sweeping Stereo</h2><blockquote>
+<ul>
+<li>假设在N个不同的位置对物体进行拍摄（也可以理解为有N个不同的相机对物体进行拍摄），则其相机投影矩阵为：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/projection_matrix.png" alt="projection matrix"><br>其中， Kk是第k个相机的内参矩阵，Rk和Ck分别是第k个相机相对于参考相机P(ref)的旋转和平移。并且将参考相机P(ref)假设为坐标原点，则它的投影矩阵为P_{ref}=K_{ref}[I_{3x3}| 0]</li>
 </ul>
-<hr>
-<h3 id="2-Introduction"><a href="#2-Introduction" class="headerlink" title="2. Introduction"></a><strong>2. Introduction</strong></h3><ul>
-<li>在Decoding的过程中，使用max pooling记录的index的好处：<ul>
-<li>提高边界刻画能力；</li>
-<li>减少了端到端的训练过程中所需的参数；</li>
-<li>其他任何的encoder+decoder的结构中都可以采用这种上采样形式，易于扩展。</li>
+</blockquote>
+<blockquote>
+<ul>
+<li>假设一共划分出M个平面，则每个平面可以表示为：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/plane.png" alt="plane"></li>
 </ul>
-</li>
-<li>虽然之前也有基于max pooling index的decoder的工作，但是它也加上了fc layer，fc layer的参数占了总体90%的参数量，使得训练过程比较困难。</li>
+</blockquote>
+<blockquote>
+<ul>
+<li>将参考视图reference viwew中的像素投影到其他图像中， 这种从参考图像平面投影到其他相机图像平面的变换是planar mapping，因此可以用单应矩阵来表示：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/homo.png" alt="homo"></li>
 </ul>
-<hr>
-<h3 id="3-Architrcture"><a href="#3-Architrcture" class="headerlink" title="3. Architrcture"></a><strong>3. Architrcture</strong></h3><ul>
-<li>SegNet网络结构如下：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/SegNet/1.jpg" alt="NetWork"></li>
-<li>在每次convolution的时候，使用了CNN+BN+RELU的组合。</li>
-<li>在降采样的过程中，feature map逐渐减小，这会损失边界信息，记录max pooling过程中的index，可以较好地捕捉到边界信息。SegNet使用2bits来存储2X2的max pooling的结果，这可以大大减少网络所需要的存储空间。</li>
-<li>SegNet中带有index的pooling如下图所示：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/SegNet/2.jpg" alt="Pooling"></li>
-<li>在decoder中，只根据之前记录的index去进行上采样，则upsampling得到的feature map中，每个都是有3/4的像素值为0，因此使用经过可训练的filter生成dense feature map。</li>
-<li>与DeconvNet、UNet进行了对比：<ul>
-<li>DeconvNet参数很多，训练困难，需要大量计算资源。</li>
-<li>UNet没有使用带有index的pooling，同时去除了VGG中的Conv5以及pool5 layer，之后使用了deconvolution layer作为decoder。而SegNet使用了VGG-16中的所有参数作为pretrained weights。</li>
+</blockquote>
+<blockquote>
+<ul>
+<li>参考视图中被map的像素(x,y)在另一幅图像Ik中的位置为(xk, yk)：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/pixel.png" alt="pixel"><br>如果某个平面与投影到参考视图的像素(x, y)所在的曲面相交，并且表面只存在漫反射，则Ik(xk, yk)和Iref(x,y)的颜色一致。</li>
 </ul>
-</li>
-<li>FCN中，在decoding的过程中，会将上采样的结果与对称的encode的feature map相加，因此需要feature channel是相同的，而SegNet则不需要满足channel个数相同的条件。</li>
-<li>经过对比实验，有几个关于SegNet的结论：<ul>
-<li>encoder feature map参数完全存储时，模型性能最好，这可以通过语义结果的边界看出来； </li>
-<li>当内存要求有限制时，可以使用降维或者max pooling index的方式减少内存要求，使用合适的decoder提升模型性能。</li>
-<li>对于给定的encoder，更大的decoder会提升模型的性能。</li>
+</blockquote>
+<blockquote>
+<ul>
+<li>相似性度量：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/cost.png" alt="cost"></li>
 </ul>
-</li>
+</blockquote>
+<blockquote>
+<ul>
+<li>最小代价函数所对应的假设平面则为物体实际所在的深度：<br><img src="https://github.com/LCJHust/Github_Images/raw/master/PlaneSweeping/depth.png" alt="depth"></li>
 </ul>
-<hr>
-<h3 id="4-Benchmark"><a href="#4-Benchmark" class="headerlink" title="4. Benchmark"></a><strong>4. Benchmark</strong></h3><p>作者在两种场景下做了实验：</p>
-<h4 id="Road-Scene-Segmentation"><a href="#Road-Scene-Segmentation" class="headerlink" title="Road Scene Segmentation"></a><strong>Road Scene Segmentation</strong></h4><ul>
-<li>SegNet对小物体的分割更加准确，同时也会产生更加平滑的分割结果。</li>
-<li>DeconvNet和SegNet的IOU最高，但是SegNet的inference time比DeconvNet要少很多。</li>
-</ul>
-<h4 id="SUN-RGB-D-Indoor-Scenes"><a href="#SUN-RGB-D-Indoor-Scenes" class="headerlink" title="SUN RGB-D Indoor Scenes"></a><strong>SUN RGB-D Indoor Scenes</strong></h4><ul>
-<li>SegNet的mIOU比deeplab小一些，但是G，C以及BF指标都要更好。</li>
-<li>这个任务比之前的任务要困难很多，主要是因为这里面的像素类别很多，类别不均衡现象更加严重，而且摄像头的视角不固定，物体的形状和大小变化比较多。</li>
-</ul>
-<hr>
-<h3 id="5-Conclusion"><a href="#5-Conclusion" class="headerlink" title="5. Conclusion"></a><strong>5. Conclusion</strong></h3><ul>
-<li>SegNet最主要的就是引入了这种encoder-decoder的结构，同时使用带有index的max pooling的结构，大大减小了inference过程中的存储损耗（精度几乎不受影响）。</li>
-<li>语义分割任务还有很大的提升空间。</li>
-</ul>
+</blockquote>
 
       
 
@@ -260,11 +250,11 @@
 		<ul class="article-tag-list">
 			 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">DeepLearning</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">3D</a>
         		</li>
       		 
         		<li class="article-tag-list-item">
-        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">Segmentation</a>
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color2">Depth Estimation</a>
         		</li>
       		
 		</ul>
@@ -320,7 +310,7 @@
     <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
     <p>扫一扫，分享到微信</p>
     <div class="wx-qrcode">
-      <img src="//pan.baidu.com/share/qrcode?url=http://yoursite.com/2018/11/01/SegNet/" alt="微信分享二维码">
+      <img src="//pan.baidu.com/share/qrcode?url=http://yoursite.com/2019/08/18/PlaneSweeping/" alt="微信分享二维码">
     </div>
 </div>
 
@@ -334,18 +324,9 @@
   
 <nav id="article-nav">
   
-    <a href="/2019/05/25/hello-world/" id="article-nav-newer" class="article-nav-link-wrap">
-      <i class="icon-circle-left"></i>
-      <div class="article-nav-title">
-        
-          Hello World
-        
-      </div>
-    </a>
   
-  
-    <a href="/2018/10/30/FCN/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">【论文阅读笔记】语义分割FCN</div>
+    <a href="/2019/08/04/DORN/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">【论文阅读笔记】 —— Deep Ordinal Regression Network for Monocular Depth Estimation</div>
       <i class="icon-circle-right"></i>
     </a>
   
@@ -372,7 +353,7 @@
                 </span>
                 <span class="tooltip-content">
                     <div class="toc-article">
-                    <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-Abstract"><span class="toc-number">1.</span> <span class="toc-text">1. Abstract</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-Introduction"><span class="toc-number">2.</span> <span class="toc-text">2. Introduction</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-Architrcture"><span class="toc-number">3.</span> <span class="toc-text">3. Architrcture</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-Benchmark"><span class="toc-number">4.</span> <span class="toc-text">4. Benchmark</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Road-Scene-Segmentation"><span class="toc-number">4.1.</span> <span class="toc-text">Road Scene Segmentation</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#SUN-RGB-D-Indoor-Scenes"><span class="toc-number">4.2.</span> <span class="toc-text">SUN RGB-D Indoor Scenes</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-Conclusion"><span class="toc-number">5.</span> <span class="toc-text">5. Conclusion</span></a></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#论文地址：Real-Time-Plane-Sweeping-Stereo-with-Multiple-Sweeping-Directions"><span class="toc-number">1.</span> <span class="toc-text">论文地址：Real-Time Plane-Sweeping Stereo with Multiple Sweeping Directions</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Introduction"><span class="toc-number">2.</span> <span class="toc-text">Introduction</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Basic-Algorithm"><span class="toc-number">3.</span> <span class="toc-text">Basic Algorithm</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Plane-Sweeping-Stereo"><span class="toc-number">4.</span> <span class="toc-text">Plane Sweeping Stereo</span></a></li></ol>
                     </div>
                 </span>
             </div>
